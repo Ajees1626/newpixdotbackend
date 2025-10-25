@@ -6,24 +6,34 @@ from email.mime.multipart import MIMEMultipart
 import os
 from dotenv import load_dotenv
 
+# -----------------------------
 # Load environment variables
+# -----------------------------
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
 
-# Gmail credentials (from .env or Render environment variables)
+# Enable CORS for all domains (important for React frontend)
+CORS(app, resources={r"/*": {"origins": "*"}})
+
+# Gmail credentials (use App Password, not normal password)
 EMAIL_ADDRESS = os.getenv("EMAIL_USER")  # e.g. pixdotsolutions@gmail.com
-EMAIL_PASSWORD = os.getenv("EMAIL_PASS")  # App Password, not Gmail login
+EMAIL_PASSWORD = os.getenv("EMAIL_PASS")  # App Password
 
+# Debug info
 print(f"📧 Email User: {'✅ Set' if EMAIL_ADDRESS else '❌ Missing'}")
 
+# -----------------------------
+# Routes
+# -----------------------------
 @app.route("/")
 def home():
-    return "Pixdot Backend Running 🚀 (Gmail SMTP)"
+    return "Pixdot Backend Running 🚀 (Gmail SMTP Integration Active)"
+
 
 @app.route("/api/contact", methods=["POST", "OPTIONS"])
 def contact():
+    # Handle CORS preflight
     if request.method == "OPTIONS":
         response = jsonify({"status": "OK"})
         response.headers.add("Access-Control-Allow-Origin", "*")
@@ -36,16 +46,18 @@ def contact():
         if not data:
             return jsonify({"error": "No JSON body received"}), 400
 
-        required = ["firstName", "lastName", "email", "subject", "message"]
-        for field in required:
+        required_fields = ["firstName", "lastName", "email", "subject", "message"]
+        for field in required_fields:
             if not data.get(field):
                 return jsonify({"error": f"{field} is required"}), 400
 
-        # Email message to admin
+        # --------------------------------
+        # Compose email to admin
+        # --------------------------------
         admin_msg = MIMEMultipart()
         admin_msg["From"] = EMAIL_ADDRESS
         admin_msg["To"] = "pixdotsolutions@gmail.com"
-        admin_msg["Subject"] = f"New Contact: {data['firstName']} {data['lastName']}"
+        admin_msg["Subject"] = f"New Contact from {data['firstName']} {data['lastName']}"
 
         admin_body = f"""
         📩 New Contact Form Submission
@@ -60,7 +72,9 @@ def contact():
         """
         admin_msg.attach(MIMEText(admin_body, "plain"))
 
-        # Auto-reply to user
+        # --------------------------------
+        # Compose auto-reply to user
+        # --------------------------------
         user_msg = MIMEMultipart()
         user_msg["From"] = EMAIL_ADDRESS
         user_msg["To"] = data["email"]
@@ -69,13 +83,13 @@ def contact():
         user_body = f"""
         Dear {data['firstName']},
 
-        ✅ Thank you for contacting Pixdot Solutions!
-        We've received your message and will get back to you within 24 hours.
+        ✅ Thank you for reaching out to Pixdot Solutions!
+        We’ve received your message and will get back to you within 24 hours.
 
         📌 Your Message:
         {data['message']}
 
-        📞 Need urgent help? Call us at:
+        📞 For quick assistance, contact:
         • +91-87789 96278
         • +91-87789 64644
 
@@ -86,7 +100,9 @@ def contact():
         """
         user_msg.attach(MIMEText(user_body, "plain"))
 
+        # --------------------------------
         # Send both emails via Gmail SMTP
+        # --------------------------------
         with smtplib.SMTP("smtp.gmail.com", 587) as server:
             server.starttls()
             server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
@@ -96,10 +112,18 @@ def contact():
         print("✅ Emails sent successfully!")
         return jsonify({"success": True, "message": "Emails sent successfully"}), 200
 
+    except smtplib.SMTPAuthenticationError:
+        print("❌ SMTP Authentication Failed — check Gmail App Password!")
+        return jsonify({"error": "Invalid email credentials"}), 500
+
     except Exception as e:
         print(f"❌ Server Error: {e}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 
+# -----------------------------
+# Run App
+# -----------------------------
 if __name__ == "__main__":
+    # host="0.0.0.0" allows external access (Render compatible)
     app.run(debug=True, host="0.0.0.0", port=5000)

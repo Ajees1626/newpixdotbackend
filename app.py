@@ -13,11 +13,10 @@ app = Flask(__name__)
 CORS(app)
 
 # Gmail credentials (from .env or Render environment variables)
-EMAIL_ADDRESS = os.getenv("EMAIL_USER") or os.getenv("GMAIL_USER")  # e.g. pixdotsolutions@gmail.com
-EMAIL_PASSWORD = os.getenv("EMAIL_PASS") or os.getenv("GMAIL_PASS")  # App Password, not Gmail login
+EMAIL_ADDRESS = os.getenv("EMAIL_USER")  # e.g. pixdotsolutions@gmail.com
+EMAIL_PASSWORD = os.getenv("EMAIL_PASS")  # App Password, not Gmail login
 
 print(f"📧 Email User: {'✅ Set' if EMAIL_ADDRESS else '❌ Missing'}")
-print(f"📧 Email Pass: {'✅ Set' if EMAIL_PASSWORD else '❌ Missing'}")
 
 @app.route("/")
 def home():
@@ -88,27 +87,14 @@ def contact():
         user_msg.attach(MIMEText(user_body, "plain"))
 
         # Send both emails via Gmail SMTP
-        try:
-            with smtplib.SMTP("smtp.gmail.com", 587) as server:
-                server.starttls()
-                server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-                server.send_message(admin_msg)
-                server.send_message(user_msg)
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            server.send_message(admin_msg)
+            server.send_message(user_msg)
 
-            print("✅ Emails sent successfully!")
-            return jsonify({
-                "success": True, 
-                "message": "Emails sent successfully",
-                "admin_email": "pixdotsolutions@gmail.com",
-                "user_email": data["email"]
-            }), 200
-
-        except smtplib.SMTPAuthenticationError as e:
-            print(f"❌ Gmail Authentication Error: {e}")
-            return jsonify({"error": "Gmail authentication failed. Please check your credentials."}), 500
-        except smtplib.SMTPException as e:
-            print(f"❌ SMTP Error: {e}")
-            return jsonify({"error": f"Email sending failed: {str(e)}"}), 500
+        print("✅ Emails sent successfully!")
+        return jsonify({"success": True, "message": "Emails sent successfully"}), 200
 
     except Exception as e:
         print(f"❌ Server Error: {e}")

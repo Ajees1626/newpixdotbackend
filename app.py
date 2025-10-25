@@ -1,8 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import requests
 import os
 from dotenv import load_dotenv
 
@@ -12,13 +10,11 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
-# Gmail credentials (from .env)
-GMAIL_USER = os.getenv("GMAIL_USER")
-GMAIL_PASS = os.getenv("GMAIL_PASS")
+# Brevo API key (from your Render environment variables)
+BREVO_API_KEY = os.getenv("BREVO_API_KEY")
 
-# Debug: Print credentials status
-print(f"🔧 Gmail User: {'✅ Set' if GMAIL_USER else '❌ Not set'}")
-print(f"🔧 Gmail Pass: {'✅ Set' if GMAIL_PASS else '❌ Not set'}")
+# Debug check
+print(f"🔧 Brevo API Key: {'✅ Set' if BREVO_API_KEY else '❌ Not set'}")
 
 @app.route("/")
 def home():
@@ -36,17 +32,15 @@ def contact():
 
     try:
         data = request.get_json()
-
         if not data:
             return jsonify({"error": "No JSON body received"}), 400
 
-        # Required fields
         required = ["firstName", "lastName", "email", "subject", "message"]
         for field in required:
             if not data.get(field):
                 return jsonify({"error": f"{field} is required"}), 400
 
-        # --- Email to Admin (pixdotsolutions@gmail.com) ---
+        # --- Email to Admin ---
         admin_body = f"""
         📩 New Contact Form Submission
 
@@ -60,13 +54,7 @@ def contact():
         {data['message']}
         """
 
-        msg_admin = MIMEMultipart()
-        msg_admin["From"] = GMAIL_USER
-        msg_admin["To"] = "pixdotsolutions@gmail.com"
-        msg_admin["Subject"] = f"New Contact: {data['firstName']} {data['lastName']}"
-        msg_admin.attach(MIMEText(admin_body, "plain"))
-
-        # --- Auto reply to User (Thank You mail) ---
+        # --- Auto reply to User ---
         user_body = f"""
         Dear {data['firstName']},
 
@@ -86,43 +74,50 @@ def contact():
         Team Pixdot Solutions 🚀
         """
 
-        msg_user = MIMEMultipart()
-        msg_user["From"] = GMAIL_USER
-        msg_user["To"] = data["email"]
-        msg_user["Subject"] = "Thank you for contacting Pixdot Solutions"
-        msg_user.attach(MIMEText(user_body, "plain"))
+        # Function to send email via Brevo
+        def send_email(to_email, subject, html_content):
+            url = "https://api.brevo.com/v3/smtp/email"
+            headers = {
+                "accept": "application/json",
+                "api-key": BREVO_API_KEY,
+                "content-type": "application/json"
+            }
+            data = {
+                "sender": {"name": "Pixdot Solutions", "email": "noreply@pixdotsolutions.com"},
+                "to": [{"email": to_email}],
+                "subject": subject,
+                "htmlContent": f"<pre>{html_content}</pre>"
+            }
+            response = requests.post(url, headers=headers, json=data)
+            return response.status_code, response.text
 
-        # --- Send Emails ---
-        try:
-            with smtplib.SMTP("smtp.gmail.com", 587) as server:
-                server.starttls()
-                server.login(GMAIL_USER, GMAIL_PASS)
-                
-                # Send to Admin
-                server.sendmail(GMAIL_USER, "pixdotsolutions@gmail.com", msg_admin.as_string())
-                print(f"✅ Email sent to admin: pixdotsolutions@gmail.com")
-                
-                # Send to User
-                server.sendmail(GMAIL_USER, data["email"], msg_user.as_string())
-                print(f"✅ Auto-reply sent to user: {data['email']}")
+        # Send to Admin
+        admin_status, admin_text = send_email(
+            "pixdotsolutions@gmail.com",
+            f"New Contact: {data['firstName']} {data['lastName']}",
+            admin_body
+        )
 
-            return jsonify({
-                "success": True, 
-                "message": "Message sent successfully",
-                "admin_email": "pixdotsolutions@gmail.com",
-                "user_email": data["email"]
-            }), 200
+        # Send Auto Reply to User
+        user_status, user_text = send_email(
+            data["email"],
+            "Thank you for contacting Pixdot Solutions",
+            user_body
+        )
 
-        except smtplib.SMTPAuthenticationError as e:
-            print(f"❌ Gmail Authentication Error: {e}")
-            return jsonify({"error": "Gmail authentication failed. Please check your credentials."}), 500
-        except smtplib.SMTPException as e:
-            print(f"❌ SMTP Error: {e}")
-            return jsonify({"error": f"Email sending failed: {str(e)}"}), 500
+        print(f"✅ Admin mail: {admin_status}, User mail: {user_status}")
+
+        return jsonify({
+            "success": True,
+            "message": "Emails sent successfully",
+            "admin_status": admin_status,
+            "user_status": user_status
+        }), 200
 
     except Exception as e:
         print(f"❌ Server Error: {e}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
+
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)

@@ -41,11 +41,11 @@ def home():
 def send_email():
     # Handle CORS preflight request
     if request.method == "OPTIONS":
-        response = jsonify({"status": "OK"})
+        response = jsonify({"status": "CORS preflight OK"})
         response.headers.add("Access-Control-Allow-Origin", "*")
         response.headers.add("Access-Control-Allow-Headers", "Content-Type")
         response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
-        return response
+        return response, 200
 
     try:
         data = request.get_json()
@@ -60,14 +60,14 @@ def send_email():
         if not all([name, email, message]):
             return jsonify({'success': False, 'error': 'Missing required fields'}), 400
 
-        # Compose admin email
+        # Compose the email
         msg = MIMEMultipart()
         msg['From'] = EMAIL_ADDRESS
         msg['To'] = EMAIL_ADDRESS
         msg['Subject'] = f"📩 New Contact Message from {name}"
 
-        email_body = f"""
-        You have received a new message from your website contact form:
+        body = f"""
+        New message from your website contact form:
 
         👤 Name: {name}
         📧 Email: {email}
@@ -75,23 +75,19 @@ def send_email():
         💬 Message:
         {message}
         """
-        msg.attach(MIMEText(email_body, 'plain'))
 
-        # Send via Gmail SMTP
-        with smtplib.SMTP('smtp.gmail.com', 587) as server:
-            server.starttls()
-            server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-            server.send_message(msg)
+        msg.attach(MIMEText(body, 'plain'))
 
-        print("✅ Email sent successfully!")
+        # Send email using SSL
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            smtp.send_message(msg)
+
+        print("✅ Email sent successfully")
         return jsonify({'success': True, 'message': 'Email sent successfully!'}), 200
 
-    except smtplib.SMTPAuthenticationError:
-        print("❌ SMTP Authentication Failed — Check Gmail App Password!")
-        return jsonify({'success': False, 'error': 'Invalid Gmail credentials'}), 500
-
     except Exception as e:
-        print(f"❌ Server Error: {e}")
+        print("❌ Email send error:", e)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 

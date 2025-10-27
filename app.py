@@ -122,6 +122,94 @@ def contact():
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 
+# New simplified API endpoint
+@app.route("/send_email", methods=["POST", "OPTIONS"])
+def send_email():
+    # Handle CORS preflight
+    if request.method == "OPTIONS":
+        response = jsonify({"status": "OK"})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type")
+        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+        return response
+
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON body received"}), 400
+
+        required_fields = ["name", "email", "message"]
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({"error": f"{field} is required"}), 400
+
+        # --------------------------------
+        # Compose email to admin
+        # --------------------------------
+        admin_msg = MIMEMultipart()
+        admin_msg["From"] = EMAIL_ADDRESS
+        admin_msg["To"] = "pixdotsolutions@gmail.com"
+        admin_msg["Subject"] = f"New Contact from {data['name']}"
+
+        admin_body = f"""
+        📩 New Contact Form Submission
+
+        👤 Name: {data['name']}
+        📧 Email: {data['email']}
+        💬 Message:
+        {data['message']}
+        """
+        admin_msg.attach(MIMEText(admin_body, "plain"))
+
+        # --------------------------------
+        # Compose auto-reply to user
+        # --------------------------------
+        user_msg = MIMEMultipart()
+        user_msg["From"] = EMAIL_ADDRESS
+        user_msg["To"] = data["email"]
+        user_msg["Subject"] = "Thank you for contacting Pixdot Solutions"
+
+        user_body = f"""
+        Dear {data['name']},
+
+        ✅ Thank you for reaching out to Pixdot Solutions!
+        We've received your message and will get back to you within 24 hours.
+
+        📌 Your Message:
+        {data['message']}
+
+        📞 For quick assistance, contact:
+        • +91-87789 96278
+        • +91-87789 64644
+
+        📧 Email: info@pixdotsolutions.com
+
+        Best regards,
+        Team Pixdot Solutions 🚀
+        """
+        user_msg.attach(MIMEText(user_body, "plain"))
+
+        # --------------------------------
+        # Send both emails via Gmail SMTP
+        # --------------------------------
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            server.send_message(admin_msg)
+            server.send_message(user_msg)
+
+        print("✅ Emails sent successfully!")
+        return jsonify({"success": True, "message": "Emails sent successfully"}), 200
+
+    except smtplib.SMTPAuthenticationError:
+        print("❌ SMTP Authentication Failed — check Gmail App Password!")
+        return jsonify({"error": "Invalid email credentials"}), 500
+
+    except Exception as e:
+        print(f"❌ Server Error: {e}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
 # -----------------------------
 # Run the App
 # -----------------------------

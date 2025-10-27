@@ -235,6 +235,6 @@ def internal_error(error):
 # Run Flask App
 # -----------------------------
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 5000))
+    port = int(os.getenv("PORT", 10000))
     logger.info(f"🚀 Starting Pixdot Backend on port {port}")
     app.run(host="0.0.0.0", port=port, debug=False)

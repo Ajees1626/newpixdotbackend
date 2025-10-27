@@ -36,3 +36,4 @@ if __name__ == "__main__":
         print("💡 Restart the backend server: python app.py")
     else:
         print("❌ Failed to fix credentials")
+

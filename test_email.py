@@ -71,3 +71,4 @@ if __name__ == "__main__":
     else:
         print("❌ Email functionality failed")
         print("💡 Make sure Gmail credentials are correct in .env file")
+

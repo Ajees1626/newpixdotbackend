@@ -125,5 +125,8 @@ def contact():
 # Run App
 # -----------------------------
 if __name__ == "__main__":
-    # host="0.0.0.0" allows external access (Render compatible)
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    # Get port from environment variable (Railway sets this automatically)
+    port = int(os.getenv("PORT", 5000))
+    # host="0.0.0.0" allows external access (Railway compatible)
+    # debug=False for production deployment
+    app.run(debug=False, host="0.0.0.0", port=port)

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Setup script to create .env file for Gmail SMTP configuration
+IMPORTANT: Replace the credentials below with your actual Gmail App Password
 """
 
 import os
@@ -8,9 +9,9 @@ import os
 def create_env_file():
     """Create .env file with Gmail credentials"""
     
-    # Gmail credentials
-    email_user = "pixdotsolutions@gmail.com"
-    email_pass = "ekrj uwyb atnl fhwy"
+    # Gmail credentials - REPLACE THESE WITH YOUR ACTUAL CREDENTIALS
+    email_user = "your-email@gmail.com"  # Replace with your Gmail
+    email_pass = "your-app-password"     # Replace with your Gmail App Password
     
     env_content = f"""EMAIL_USER={email_user}
 EMAIL_PASS={email_pass}
@@ -22,6 +23,7 @@ EMAIL_PASS={email_pass}
         print("✅ .env file created successfully!")
         print(f"📧 Email User: {email_user}")
         print("🔑 App Password: Set")
+        print("⚠️  IMPORTANT: Update the credentials in this script before deploying!")
         return True
     except Exception as e:
         print(f"❌ Error creating .env file: {e}")
@@ -57,3 +59,4 @@ if __name__ == "__main__":
             print("✅ Setup complete! You can now run: python app.py")
         else:
             print("❌ Setup failed. Please check permissions.")
+

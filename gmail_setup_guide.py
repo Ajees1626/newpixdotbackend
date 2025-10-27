@@ -121,3 +121,4 @@ if __name__ == "__main__":
         create_correct_env()
         print("\n📝 Please follow the instructions in .env.template")
         print("🔧 After updating credentials, run this script again")
+

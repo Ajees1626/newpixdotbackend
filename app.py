@@ -12,37 +12,27 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-# Enable full CORS support
-CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app)
 
 # -----------------------------
-# Email Config
+# Gmail Config
 # -----------------------------
 EMAIL_ADDRESS = os.getenv("EMAIL_USER", "pixdotsolutions@gmail.com")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASS")
 
 # -----------------------------
-# Home route
+# Root Route
 # -----------------------------
 @app.route("/")
 def home():
-    return "✅ Pixdot Backend Running (Gmail SMTP Integration Active)"
+    return "✅ Pixdot Backend Running (Gmail SMTP Integration Active)", 200
 
 
 # -----------------------------
-# Send Email API
+# Send Email Route
 # -----------------------------
-@app.route("/send_email", methods=["POST", "OPTIONS"])
+@app.route("/send_email", methods=["POST"])
 def send_email():
-    # ---- Handle CORS preflight ----
-    if request.method == "OPTIONS":
-        response = jsonify({"status": "CORS OK"})
-        response.headers.add("Access-Control-Allow-Origin", "*")
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type")
-        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
-        return response, 200
-
-    # ---- Handle actual POST ----
     try:
         data = request.get_json()
 
@@ -56,7 +46,7 @@ def send_email():
         if not all([name, email, message]):
             return jsonify({"success": False, "error": "Missing required fields"}), 400
 
-        # Compose email
+        # Email to admin
         msg = MIMEMultipart()
         msg["From"] = EMAIL_ADDRESS
         msg["To"] = EMAIL_ADDRESS
@@ -73,7 +63,7 @@ def send_email():
         """
         msg.attach(MIMEText(body, "plain"))
 
-        # Send email (secure SMTP SSL)
+        # Send email (using SSL)
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
             smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
             smtp.send_message(msg)
@@ -82,15 +72,16 @@ def send_email():
         return jsonify({"success": True, "message": "Email sent successfully!"}), 200
 
     except smtplib.SMTPAuthenticationError:
-        print("❌ Gmail authentication failed! Check App Password.")
+        print("❌ Gmail authentication failed. Check App Password.")
         return jsonify({"success": False, "error": "Invalid Gmail credentials"}), 500
+
     except Exception as e:
         print("❌ Error:", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
 # -----------------------------
-# Run Flask app
+# Run Flask App
 # -----------------------------
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))

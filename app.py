@@ -12,62 +12,58 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-
-# Enable CORS for all routes and domains
+# Enable full CORS support
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 # -----------------------------
-# Gmail Credentials (App Password required)
+# Email Config
 # -----------------------------
 EMAIL_ADDRESS = os.getenv("EMAIL_USER", "pixdotsolutions@gmail.com")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASS")
 
-# Debug log
-print(f"📧 Email user loaded: {'✅' if EMAIL_ADDRESS else '❌ MISSING'}")
-
-
 # -----------------------------
-# Root route (for Render health check)
+# Home route
 # -----------------------------
-@app.route('/')
+@app.route("/")
 def home():
-    return "Pixdot Backend Running 🚀 (Gmail SMTP Integration Active)"
+    return "✅ Pixdot Backend Running (Gmail SMTP Integration Active)"
 
 
 # -----------------------------
-# Send Email Route
+# Send Email API
 # -----------------------------
-@app.route('/send_email', methods=['POST', 'OPTIONS'])
+@app.route("/send_email", methods=["POST", "OPTIONS"])
 def send_email():
-    # Handle CORS preflight request
+    # ---- Handle CORS preflight ----
     if request.method == "OPTIONS":
-        response = jsonify({"status": "CORS preflight OK"})
+        response = jsonify({"status": "CORS OK"})
         response.headers.add("Access-Control-Allow-Origin", "*")
         response.headers.add("Access-Control-Allow-Headers", "Content-Type")
         response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
         return response, 200
 
+    # ---- Handle actual POST ----
     try:
         data = request.get_json()
 
         if not data:
-            return jsonify({'success': False, 'error': 'No data received'}), 400
+            return jsonify({"success": False, "error": "No data received"}), 400
 
-        name = data.get('name')
-        email = data.get('email')
-        message = data.get('message')
+        name = data.get("name")
+        email = data.get("email")
+        message = data.get("message")
 
         if not all([name, email, message]):
-            return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+            return jsonify({"success": False, "error": "Missing required fields"}), 400
 
-        # Compose the email
+        # Compose email
         msg = MIMEMultipart()
-        msg['From'] = EMAIL_ADDRESS
-        msg['To'] = EMAIL_ADDRESS
-        msg['Subject'] = f"📩 New Contact Message from {name}"
+        msg["From"] = EMAIL_ADDRESS
+        msg["To"] = EMAIL_ADDRESS
+        msg["Subject"] = f"📩 New Contact Message from {name}"
 
         body = f"""
-        New message from your website contact form:
+        You received a new message from your website contact form:
 
         👤 Name: {name}
         📧 Email: {email}
@@ -75,25 +71,27 @@ def send_email():
         💬 Message:
         {message}
         """
+        msg.attach(MIMEText(body, "plain"))
 
-        msg.attach(MIMEText(body, 'plain'))
-
-        # Send email using SSL
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+        # Send email (secure SMTP SSL)
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
             smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
             smtp.send_message(msg)
 
-        print("✅ Email sent successfully")
-        return jsonify({'success': True, 'message': 'Email sent successfully!'}), 200
+        print("✅ Email sent successfully!")
+        return jsonify({"success": True, "message": "Email sent successfully!"}), 200
 
+    except smtplib.SMTPAuthenticationError:
+        print("❌ Gmail authentication failed! Check App Password.")
+        return jsonify({"success": False, "error": "Invalid Gmail credentials"}), 500
     except Exception as e:
-        print("❌ Email send error:", e)
-        return jsonify({'success': False, 'error': str(e)}), 500
+        print("❌ Error:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 # -----------------------------
-# Run App
+# Run Flask app
 # -----------------------------
-if __name__ == '__main__':
+if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)

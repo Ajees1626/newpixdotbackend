@@ -6,213 +6,51 @@ from email.mime.multipart import MIMEMultipart
 import os
 from dotenv import load_dotenv
 
-# -----------------------------
 # Load environment variables
-# -----------------------------
 load_dotenv()
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS
 
-# Enable CORS for all domains (important for React frontend)
-CORS(app, resources={r"/*": {"origins": "*"}})
+# Gmail credentials
+EMAIL_ADDRESS = os.getenv("EMAIL_USER", "pixdotsolutions@gmail.com")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASS")
 
-# Gmail credentials (use App Password, not normal password)
-EMAIL_ADDRESS = os.getenv("EMAIL_USER")  # e.g. pixdotsolutions@gmail.com
-EMAIL_PASSWORD = os.getenv("EMAIL_PASS")  # Gmail App Password
-
-# Debug info in logs
-print(f"📧 Email User: {'✅ Set' if EMAIL_ADDRESS else '❌ Missing'}")
-
-# -----------------------------
-# Routes
-# -----------------------------
-@app.route("/")
+@app.route('/')
 def home():
-    return "✅ Pixdot Backend Running on Render (SMTP Integration Active)"
+    return "Pixdot Backend Running 🚀 (Gmail SMTP Integration Active)"
 
-
-# API endpoint for contact form
-@app.route("/api/contact", methods=["POST", "OPTIONS"])
-def contact():
-    # Handle CORS preflight
-    if request.method == "OPTIONS":
-        response = jsonify({"status": "OK"})
-        response.headers.add("Access-Control-Allow-Origin", "*")
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type")
-        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
-        return response
-
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No JSON body received"}), 400
-
-        required_fields = ["firstName", "lastName", "email", "subject", "message"]
-        for field in required_fields:
-            if not data.get(field):
-                return jsonify({"error": f"{field} is required"}), 400
-
-        # -----------------------------
-        # Compose email to admin
-        # -----------------------------
-        admin_msg = MIMEMultipart()
-        admin_msg["From"] = EMAIL_ADDRESS
-        admin_msg["To"] = "pixdotsolutions@gmail.com"
-        admin_msg["Subject"] = f"New Contact from {data['firstName']} {data['lastName']}"
-
-        admin_body = f"""
-        📩 New Contact Form Submission
-
-        👤 Name: {data['firstName']} {data['lastName']}
-        📧 Email: {data['email']}
-        📱 Phone: {data.get('phone', 'N/A')}
-        🏢 Company: {data.get('company', 'N/A')}
-        📝 Subject: {data['subject']}
-        💬 Message:
-        {data['message']}
-        """
-        admin_msg.attach(MIMEText(admin_body, "plain"))
-
-        # -----------------------------
-        # Compose auto-reply to user
-        # -----------------------------
-        user_msg = MIMEMultipart()
-        user_msg["From"] = EMAIL_ADDRESS
-        user_msg["To"] = data["email"]
-        user_msg["Subject"] = "Thank you for contacting Pixdot Solutions"
-
-        user_body = f"""
-        Dear {data['firstName']},
-
-        ✅ Thank you for reaching out to Pixdot Solutions!
-        We’ve received your message and will get back to you within 24 hours.
-
-        📌 Your Message:
-        {data['message']}
-
-        📞 For quick assistance, contact:
-        • +91-87789 96278
-        • +91-87789 64644
-
-        📧 Email: info@pixdotsolutions.com
-
-        Best regards,
-        Team Pixdot Solutions 🚀
-        """
-        user_msg.attach(MIMEText(user_body, "plain"))
-
-        # -----------------------------
-        # Send both emails via Gmail SMTP
-        # -----------------------------
-        with smtplib.SMTP("smtp.gmail.com", 587) as server:
-            server.starttls()
-            server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-            server.send_message(admin_msg)
-            server.send_message(user_msg)
-
-        print("✅ Emails sent successfully!")
-        return jsonify({"success": True, "message": "Emails sent successfully"}), 200
-
-    except smtplib.SMTPAuthenticationError:
-        print("❌ SMTP Authentication Failed — check Gmail App Password!")
-        return jsonify({"error": "Invalid email credentials"}), 500
-
-    except Exception as e:
-        print(f"❌ Server Error: {e}")
-        return jsonify({"error": f"Server error: {str(e)}"}), 500
-
-
-# New simplified API endpoint
-@app.route("/send_email", methods=["POST", "OPTIONS"])
+@app.route('/send_email', methods=['POST'])
 def send_email():
-    # Handle CORS preflight
-    if request.method == "OPTIONS":
-        response = jsonify({"status": "OK"})
-        response.headers.add("Access-Control-Allow-Origin", "*")
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type")
-        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
-        return response
-
     try:
         data = request.get_json()
-        if not data:
-            return jsonify({"error": "No JSON body received"}), 400
+        name = data.get('name')
+        email = data.get('email')
+        message = data.get('message')
 
-        required_fields = ["name", "email", "message"]
-        for field in required_fields:
-            if not data.get(field):
-                return jsonify({"error": f"{field} is required"}), 400
+        if not all([name, email, message]):
+            return jsonify({'success': False, 'error': 'Missing required fields'}), 400
 
-        # --------------------------------
-        # Compose email to admin
-        # --------------------------------
-        admin_msg = MIMEMultipart()
-        admin_msg["From"] = EMAIL_ADDRESS
-        admin_msg["To"] = "pixdotsolutions@gmail.com"
-        admin_msg["Subject"] = f"New Contact from {data['name']}"
+        # Create email message
+        msg = MIMEMultipart()
+        msg['From'] = EMAIL_ADDRESS
+        msg['To'] = EMAIL_ADDRESS
+        msg['Subject'] = f"New message from {name}"
 
-        admin_body = f"""
-        📩 New Contact Form Submission
+        email_body = f"From: {name}\nEmail: {email}\nMessage:\n{message}"
+        msg.attach(MIMEText(email_body, 'plain'))
 
-        👤 Name: {data['name']}
-        📧 Email: {data['email']}
-        💬 Message:
-        {data['message']}
-        """
-        admin_msg.attach(MIMEText(admin_body, "plain"))
-
-        # --------------------------------
-        # Compose auto-reply to user
-        # --------------------------------
-        user_msg = MIMEMultipart()
-        user_msg["From"] = EMAIL_ADDRESS
-        user_msg["To"] = data["email"]
-        user_msg["Subject"] = "Thank you for contacting Pixdot Solutions"
-
-        user_body = f"""
-        Dear {data['name']},
-
-        ✅ Thank you for reaching out to Pixdot Solutions!
-        We've received your message and will get back to you within 24 hours.
-
-        📌 Your Message:
-        {data['message']}
-
-        📞 For quick assistance, contact:
-        • +91-87789 96278
-        • +91-87789 64644
-
-        📧 Email: info@pixdotsolutions.com
-
-        Best regards,
-        Team Pixdot Solutions 🚀
-        """
-        user_msg.attach(MIMEText(user_body, "plain"))
-
-        # --------------------------------
-        # Send both emails via Gmail SMTP
-        # --------------------------------
-        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+        # Send email
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
             server.starttls()
             server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-            server.send_message(admin_msg)
-            server.send_message(user_msg)
+            server.send_message(msg)
 
-        print("✅ Emails sent successfully!")
-        return jsonify({"success": True, "message": "Emails sent successfully"}), 200
-
-    except smtplib.SMTPAuthenticationError:
-        print("❌ SMTP Authentication Failed — check Gmail App Password!")
-        return jsonify({"error": "Invalid email credentials"}), 500
-
+        return jsonify({'success': True, 'message': 'Email sent successfully!'})
     except Exception as e:
-        print(f"❌ Server Error: {e}")
-        return jsonify({"error": f"Server error: {str(e)}"}), 500
+        print(f"Error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
-
-# -----------------------------
-# Run the App
-# -----------------------------
-if __name__ == "__main__":
+if __name__ == '__main__':
     port = int(os.getenv("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, debug=False)

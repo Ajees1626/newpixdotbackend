@@ -18,9 +18,9 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Gmail credentials (use App Password, not normal password)
 EMAIL_ADDRESS = os.getenv("EMAIL_USER")  # e.g. pixdotsolutions@gmail.com
-EMAIL_PASSWORD = os.getenv("EMAIL_PASS")  # App Password
+EMAIL_PASSWORD = os.getenv("EMAIL_PASS")  # Gmail App Password
 
-# Debug info
+# Debug info in logs
 print(f"📧 Email User: {'✅ Set' if EMAIL_ADDRESS else '❌ Missing'}")
 
 # -----------------------------
@@ -28,9 +28,10 @@ print(f"📧 Email User: {'✅ Set' if EMAIL_ADDRESS else '❌ Missing'}")
 # -----------------------------
 @app.route("/")
 def home():
-    return "Pixdot Backend Running 🚀 (Gmail SMTP Integration Active)"
+    return "✅ Pixdot Backend Running on Render (SMTP Integration Active)"
 
 
+# API endpoint for contact form
 @app.route("/api/contact", methods=["POST", "OPTIONS"])
 def contact():
     # Handle CORS preflight
@@ -51,9 +52,9 @@ def contact():
             if not data.get(field):
                 return jsonify({"error": f"{field} is required"}), 400
 
-        # --------------------------------
+        # -----------------------------
         # Compose email to admin
-        # --------------------------------
+        # -----------------------------
         admin_msg = MIMEMultipart()
         admin_msg["From"] = EMAIL_ADDRESS
         admin_msg["To"] = "pixdotsolutions@gmail.com"
@@ -72,9 +73,9 @@ def contact():
         """
         admin_msg.attach(MIMEText(admin_body, "plain"))
 
-        # --------------------------------
+        # -----------------------------
         # Compose auto-reply to user
-        # --------------------------------
+        # -----------------------------
         user_msg = MIMEMultipart()
         user_msg["From"] = EMAIL_ADDRESS
         user_msg["To"] = data["email"]
@@ -100,9 +101,9 @@ def contact():
         """
         user_msg.attach(MIMEText(user_body, "plain"))
 
-        # --------------------------------
+        # -----------------------------
         # Send both emails via Gmail SMTP
-        # --------------------------------
+        # -----------------------------
         with smtplib.SMTP("smtp.gmail.com", 587) as server:
             server.starttls()
             server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
@@ -122,11 +123,8 @@ def contact():
 
 
 # -----------------------------
-# Run App
+# Run the App
 # -----------------------------
 if __name__ == "__main__":
-    # Get port from environment variable (Railway sets this automatically)
     port = int(os.getenv("PORT", 5000))
-    # host="0.0.0.0" allows external access (Railway compatible)
-    # debug=False for production deployment
-    app.run(debug=False, host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port)

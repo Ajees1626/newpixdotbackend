@@ -8,14 +8,13 @@ from dotenv import load_dotenv
 import logging
 from datetime import datetime
 
-# -----------------------------
-# Load environment variables
-# -----------------------------
-load_dotenv()
+# Load environment variables (optional)
+try:
+    load_dotenv()
+except Exception as e:
+    print(f"Warning: Could not load .env file: {e}")
 
-# -----------------------------
 # Flask App Configuration
-# -----------------------------
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000", "http://127.0.0.1:5173"])
 
@@ -23,9 +22,7 @@ CORS(app, origins=["http://localhost:3000", "http://localhost:5173", "http://127
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# -----------------------------
-# Gmail Configuration
-# -----------------------------
+# Email Configuration
 EMAIL_ADDRESS = os.getenv("EMAIL_USER", "pixdotsolutions@gmail.com")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASS")
 
@@ -33,9 +30,6 @@ EMAIL_PASSWORD = os.getenv("EMAIL_PASS")
 logger.info(f"📧 Email configured: {'✅' if EMAIL_ADDRESS else '❌ MISSING'}")
 logger.info(f"🔑 Password configured: {'✅' if EMAIL_PASSWORD else '❌ MISSING'}")
 
-# -----------------------------
-# Utility Functions
-# -----------------------------
 def validate_email(email):
     """Basic email validation"""
     return "@" in email and "." in email.split("@")[-1]
@@ -81,10 +75,7 @@ def send_email_notification(firstName, lastName, email, company, phone, subject,
         logger.error(f"❌ Email send error: {e}")
         return False
 
-# -----------------------------
 # API Routes
-# -----------------------------
-
 @app.route("/")
 def home():
     """Health check endpoint"""
@@ -106,8 +97,7 @@ def health():
         "endpoints": {
             "home": "/",
             "health": "/health",
-            "contact": "/api/contact",
-            "test_email": "/test_email"
+            "contact": "/api/contact"
         }
     }), 200
 
@@ -196,50 +186,7 @@ def send_email():
             "error": "Internal server error"
         }), 500
 
-@app.route("/test_email", methods=["POST"])
-def test_email():
-    """Test email functionality"""
-    try:
-        test_data = {
-            "firstName": "Test",
-            "lastName": "User",
-            "email": "test@example.com",
-            "company": "Test Company",
-            "phone": "+1234567890",
-            "subject": "Test Email",
-            "message": "This is a test email from Pixdot Backend API"
-        }
-        
-        if send_email_notification(
-            test_data["firstName"],
-            test_data["lastName"], 
-            test_data["email"],
-            test_data["company"],
-            test_data["phone"],
-            test_data["subject"],
-            test_data["message"]
-        ):
-            return jsonify({
-                "success": True,
-                "message": "Test email sent successfully!"
-            }), 200
-        else:
-            return jsonify({
-                "success": False,
-                "error": "Failed to send test email"
-            }), 500
-            
-    except Exception as e:
-        logger.error(f"❌ Test email error: {e}")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
-
-# -----------------------------
 # Error Handlers
-# -----------------------------
-
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({
@@ -261,9 +208,7 @@ def internal_error(error):
         "error": "Internal server error"
     }), 500
 
-# -----------------------------
 # Run Flask App
-# -----------------------------
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     logger.info(f"🚀 Starting Pixdot Backend on port {port}")

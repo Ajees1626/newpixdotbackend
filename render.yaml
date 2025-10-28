@@ -7,8 +7,14 @@ services:
     startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
     envVars:
       - key: EMAIL_USER
-        sync: false
+        value: pixdotsolutions@gmail.com
       - key: EMAIL_PASS
         sync: false
+      - key: RECEIVER_EMAIL
+        value: pixdotsolutions@gmail.com
+      - key: FLASK_ENV
+        value: production
+      - key: PORT
+        value: 10000
     healthCheckPath: /
     autoDeploy: true
